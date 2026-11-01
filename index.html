@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus Graph — Интерактивный силовой граф</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #070b14;
+      --panel: #0f1628;
+      --border: #1c2940;
+      --text: #e8eef8;
+      --muted: #8b9bb8;
+      --accent: #5b9cff;
+      --accent2: #a78bfa;
+      --success: #34d399;
+      --warn: #fbbf24;
+      --danger: #f87171;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; font-size: 14px; }
+
+    #app { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
+
+    #sidebar {
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 18px 16px; gap: 16px; overflow-y: auto; z-index: 10;
+    }
+
+    .logo { font-size: 1.25rem; font-weight: 700; color: var(--accent); letter-spacing: -0.03em; }
+    .logo span { color: var(--muted); font-weight: 500; font-size: 0.85rem; display: block; margin-top: 2px; }
+
+    .section { display: flex; flex-direction: column; gap: 8px; }
+    .section-title { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+
+    input, textarea, select {
+      width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); outline: none; font-size: 0.9rem;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    textarea { min-height: 110px; resize: vertical; font-family: ui-monospace, monospace; font-size: 12px; }
+
+    button {
+      padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg); color: var(--text); cursor: pointer; font-weight: 500;
+      transition: 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    button:hover { background: #162033; border-color: var(--accent); }
+    button.primary { background: linear-gradient(135deg, #3b82f6, #6366f1); border: none; color: white; }
+    button.primary:hover { filter: brightness(1.1); }
+    button.active { background: #0c4a6e; border-color: var(--accent); color: var(--accent); }
+
+    .controls { display: flex; flex-direction: column; gap: 8px; }
+
+    #details-content {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px; font-size: 0.88rem; line-height: 1.5; min-height: 100px;
+    }
+    #details-content .empty { color: var(--muted); font-style: italic; }
+    #details-content .label { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; margin-top: 8px; }
+    #details-content .label:first-child { margin-top: 0; }
+    #details-content .value { font-weight: 500; }
+
+    #stats { font-size: 0.8rem; color: var(--muted); display: flex; flex-direction: column; gap: 3px; border-top: 1px solid var(--border); padding-top: 12px; }
+
+    #canvas-wrap { position: relative; overflow: hidden; background: radial-gradient(ellipse at 40% 40%, #0f172a 0%, #070b14 70%); }
+    svg { width: 100%; height: 100%; display: block; cursor: grab; }
+    svg:active { cursor: grabbing; }
+
+    .links line { stroke: #475569; stroke-opacity: 0.55; stroke-width: 1.3; }
+    .links line.highlight { stroke: var(--accent2); stroke-opacity: 0.95; stroke-width: 2.2; }
+    .links line.dim { stroke-opacity: 0.08; }
+
+    .link-labels text {
+      font-size: 10px; fill: var(--muted); pointer-events: none; text-anchor: middle;
+      dominant-baseline: central; paint-order: stroke; stroke: var(--bg); stroke-width: 3.5px;
+    }
+    .link-labels text.dim { opacity: 0.08; }
+
+    .nodes circle { stroke: #0f172a; stroke-width: 1.6px; cursor: pointer; }
+    .nodes circle:hover { stroke-width: 3px; }
+    .nodes circle.highlight { stroke: var(--warn); stroke-width: 3px; filter: drop-shadow(0 0 7px rgba(251,191,36,0.5)); }
+    .nodes circle.selected { stroke: #fff; stroke-width: 3px; }
+    .nodes circle.dim { opacity: 0.18; }
+
+    .node-labels text {
+      font-size: 11px; fill: var(--text); pointer-events: none; text-anchor: middle;
+      dominant-baseline: hanging; paint-order: stroke; stroke: var(--bg); stroke-width: 3.5px;
+    }
+    .node-labels text.dim { opacity: 0.18; }
+
+    #hint {
+      position: absolute; bottom: 14px; left: 14px; background: rgba(15,22,40,0.9);
+      border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px;
+      font-size: 0.75rem; color: var(--muted); pointer-events: none; max-width: 380px;
+    }
+
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem;
+      background: #1e3a5f; color: var(--accent);
+    }
+
+    @media (max-width: 720px) {
+      #app { grid-template-columns: 1fr; }
+      #sidebar { position: absolute; top: 0; left: 0; bottom: 0; width: 300px; transform: translateX(-100%); transition: 0.25s; z-index: 20; }
+      #sidebar.open { transform: translateX(0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="logo">
+        Nexus Graph
+        <span>Интерактивный силовой граф</span>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Поиск</div>
+        <input type="search" id="search" placeholder="Имя, id или группа…" />
+      </div>
+
+      <div class="section">
+        <div class="section-title">Загрузить свои данные (JSON)</div>
+        <textarea id="data-input" placeholder='{"nodes":[...], "links":[...]}'></textarea>
+        <button id="btn-load" class="primary">Загрузить данные</button>
+      </div>
+
+      <div class="section controls">
+        <div class="section-title">Управление</div>
+        <button id="btn-reheat">🔥 Разогреть</button>
+        <button id="btn-freeze">❄️ Заморозить</button>
+        <button id="btn-reset">↺ Сбросить позиции</button>
+        <button id="btn-export">📷 Экспорт PNG</button>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Детали узла</div>
+        <div id="details-content"><div class="empty">Кликните на узел</div></div>
+      </div>
+
+      <div id="stats">
+        <div>Узлов: <span id="stat-nodes">0</span></div>
+        <div>Рёбер: <span id="stat-links">0</span></div>
+        <div>Энергия α: <span id="stat-alpha">0.000</span></div>
+      </div>
+    </aside>
+
+    <div id="canvas-wrap">
+      <svg id="graph"></svg>
+      <div id="hint">Перетаскивание · Зум · Панорама · Поиск подсвечивает · Можно загружать свои данные</div>
+    </div>
+  </div>
+
+  <script>
+    // ===== Demo data =====
+    const demoData = {
+      nodes: [
+        { id: "hub", name: "Центр", group: "core", size: 22, desc: "Главный хаб" },
+        { id: "api", name: "API Gateway", group: "infra", size: 17, desc: "Точка входа" },
+        { id: "auth", name: "Auth", group: "security", size: 15, desc: "Авторизация" },
+        { id: "users", name: "Users DB", group: "data", size: 15, desc: "База пользователей" },
+        { id: "cache", name: "Redis", group: "infra", size: 13, desc: "Кэш" },
+        { id: "orders", name: "Orders", group: "business", size: 15, desc: "Заказы" },
+        { id: "payments", name: "Payments", group: "business", size: 14, desc: "Платежи" },
+        { id: "notify", name: "Notify", group: "infra", size: 12, desc: "Уведомления" },
+        { id: "web", name: "Web App", group: "ui", size: 15, desc: "Веб-приложение" },
+        { id: "mobile", name: "Mobile", group: "ui", size: 14, desc: "Мобильное приложение" },
+        { id: "queue", name: "Queue", group: "infra", size: 13, desc: "Очередь сообщений" },
+        { id: "cdn", name: "CDN", group: "infra", size: 11, desc: "Контент" }
+      ],
+      links: [
+        { source: "web", target: "api", label: "HTTPS" },
+        { source: "mobile", target: "api", label: "HTTPS" },
+        { source: "api", target: "auth", label: "verify" },
+        { source: "api", target: "users", label: "CRUD" },
+        { source: "api", target: "orders", label: "REST" },
+        { source: "api", target: "cache", label: "cache" },
+        { source: "auth", target: "users", label: "lookup" },
+        { source: "orders", target: "payments", label: "charge" },
+        { source: "orders", target: "notify", label: "event" },
+        { source: "orders", target: "queue", label: "publish" },
+        { source: "hub", target: "api", label: "route" },
+        { source: "web", target: "cdn", label: "assets" },
+        { source: "mobile", target: "cdn", label: "assets" }
+      ]
+    };
+
+    const groupColor = d3.scaleOrdinal()
+      .domain(["core","infra","security","data","business","ui"])
+      .range(["#f472b6","#38bdf8","#a78bfa","#4ade80","#fbbf24","#fb923c"]);
+
+    const svg = d3.select("#graph");
+    const width = () => document.getElementById("canvas-wrap").clientWidth;
+    const height = () => document.getElementById("canvas-wrap").clientHeight;
+    const g = svg.append("g");
+
+    svg.append("defs").append("marker")
+      .attr("id", "arrow").attr("viewBox", "0 -5 10 10").attr("refX", 20).attr("refY", 0)
+      .attr("markerWidth", 6).attr("markerHeight", 6).attr("orient", "auto")
+      .append("path").attr("d", "M0,-5L10,0L0,5").attr("fill", "#64748b");
+
+    const zoom = d3.zoom().scaleExtent([0.12, 5]).on("zoom", e => g.attr("transform", e.transform));
+    svg.call(zoom);
+
+    const simulation = d3.forceSimulation()
+      .force("link", d3.forceLink().id(d => d.id).distance(95).strength(0.55))
+      .force("charge", d3.forceManyBody().strength(-340))
+      .force("center", d3.forceCenter())
+      .force("collide", d3.forceCollide().radius(d => (d.size || 12) + 8).strength(0.85))
+      .alphaDecay(0.022).velocityDecay(0.32);
+
+    let frozen = false;
+    let current = { nodes: [], links: [], nodeSel: null, linkSel: null, linkLabelSel: null, nodeLabelSel: null };
+
+    const linkGroup = g.append("g").attr("class", "links");
+    const linkLabelGroup = g.append("g").attr("class", "link-labels");
+    const nodeGroup = g.append("g").attr("class", "nodes");
+    const nodeLabelGroup = g.append("g").attr("class", "node-labels");
+
+    function updateGraph(data) {
+      const nodes = data.nodes.map(d => ({...d}));
+      const links = data.links.map(d => ({...d}));
+
+      const linkSel = linkGroup.selectAll("line")
+        .data(links, d => (d.source.id||d.source) + "→" + (d.target.id||d.target))
+        .join(enter => enter.append("line").attr("marker-end", "url(#arrow)"));
+
+      const linkLabelSel = linkLabelGroup.selectAll("text")
+        .data(links.filter(d => d.label), d => (d.source.id||d.source) + "→" + (d.target.id||d.target) + d.label)
+        .join(enter => enter.append("text").text(d => d.label));
+
+      const nodeSel = nodeGroup.selectAll("circle")
+        .data(nodes, d => d.id)
+        .join(
+          enter => enter.append("circle")
+            .attr("r", d => d.size || 12)
+            .attr("fill", d => groupColor(d.group || "core"))
+            .call(drag(simulation))
+            .on("click", (e, d) => { e.stopPropagation(); selectNode(d); })
+            .on("mouseover", function(e,d){ d3.select(this).attr("r", (d.size||12)*1.18); })
+            .on("mouseout", function(e,d){ d3.select(this).attr("r", d.size||12); }),
+          update => update.attr("r", d => d.size||12).attr("fill", d => groupColor(d.group||"core"))
+        );
+
+      const nodeLabelSel = nodeLabelGroup.selectAll("text")
+        .data(nodes, d => d.id)
+        .join(enter => enter.append("text").text(d => d.name || d.id).attr("dy", d => (d.size||12)+5));
+
+      simulation.nodes(nodes);
+      simulation.force("link").links(links);
+      simulation.force("center").x(width()/2).y(height()/2);
+
+      simulation.on("tick", () => {
+        linkSel.attr("x1", d=>d.source.x).attr("y1", d=>d.source.y).attr("x2", d=>d.target.x).attr("y2", d=>d.target.y);
+        linkLabelSel.attr("x", d=>(d.source.x+d.target.x)/2).attr("y", d=>(d.source.y+d.target.y)/2);
+        nodeSel.attr("cx", d=>d.x).attr("cy", d=>d.y);
+        nodeLabelSel.attr("x", d=>d.x).attr("y", d=>d.y);
+      });
+
+      current = { nodes, links, nodeSel, linkSel, linkLabelSel, nodeLabelSel };
+      document.getElementById("stat-nodes").textContent = nodes.length;
+      document.getElementById("stat-links").textContent = links.length;
+    }
+
+    function drag(sim) {
+      return d3.drag()
+        .on("start", (e,d) => { if(!e.active && !frozen) sim.alphaTarget(0.28).restart(); d.fx=d.x; d.fy=d.y; })
+        .on("drag", (e,d) => { d.fx=e.x; d.fy=e.y; })
+        .on("end", (e,d) => { if(!e.active && !frozen) sim.alphaTarget(0); if(!frozen){ d.fx=null; d.fy=null; } });
+    }
+
+    function selectNode(d) {
+      current.nodeSel.classed("selected", n => n.id === d.id);
+      const degree = current.links.filter(l => (l.source.id||l.source)===d.id || (l.target.id||l.target)===d.id).length;
+      document.getElementById("details-content").innerHTML = `
+        <div class="label">ID</div><div class="value">${d.id}</div>
+        <div class="label">Имя</div><div class="value">${d.name||"—"}</div>
+        <div class="label">Группа</div><div class="value"><span class="badge">${d.group||"—"}</span></div>
+        <div class="label">Связи</div><div class="value">${degree}</div>
+        <div class="label">Описание</div><div class="value">${d.desc||"Нет описания"}</div>`;
+    }
+
+    svg.on("click", () => {
+      if(current.nodeSel) current.nodeSel.classed("selected", false);
+      document.getElementById("details-content").innerHTML = '<div class="empty">Кликните на узел</div>';
+      clearHighlight();
+    });
+
+    function clearHighlight() {
+      if(!current.nodeSel) return;
+      current.nodeSel.classed("highlight",false).classed("dim",false);
+      current.linkSel.classed("highlight",false).classed("dim",false);
+      current.linkLabelSel.classed("dim",false);
+      current.nodeLabelSel.classed("dim",false);
+    }
+
+    function applyHighlight(matchedIds) {
+      if(!current.nodeSel || matchedIds.size===0){ clearHighlight(); return; }
+      const connected = new Set(matchedIds);
+      current.links.forEach(l => {
+        const s=l.source.id||l.source, t=l.target.id||l.target;
+        if(matchedIds.has(s)) connected.add(t);
+        if(matchedIds.has(t)) connected.add(s);
+      });
+      current.nodeSel.classed("highlight", d=>matchedIds.has(d.id)).classed("dim", d=>!connected.has(d.id));
+      current.nodeLabelSel.classed("dim", d=>!connected.has(d.id));
+      current.linkSel
+        .classed("highlight", l => matchedIds.has(l.source.id||l.source) || matchedIds.has(l.target.id||l.target))
+        .classed("dim", l => !connected.has(l.source.id||l.source) || !connected.has(l.target.id||l.target));
+      current.linkLabelSel.classed("dim", l => !connected.has(l.source.id||l.source) || !connected.has(l.target.id||l.target));
+    }
+
+    document.getElementById("search").addEventListener("input", e => {
+      const q = e.target.value.trim().toLowerCase();
+      if(!q){ clearHighlight(); return; }
+      const matched = new Set(current.nodes.filter(n =>
+        (n.name&&n.name.toLowerCase().includes(q)) ||
+        (n.id&&n.id.toLowerCase().includes(q)) ||
+        (n.group&&n.group.toLowerCase().includes(q)) ||
+        (n.desc&&n.desc.toLowerCase().includes(q))
+      ).map(n=>n.id));
+      applyHighlight(matched);
+    });
+
+    document.getElementById("btn-reheat").onclick = () => { if(!frozen) simulation.alpha(0.85).restart(); };
+    document.getElementById("btn-freeze").onclick = function() {
+      frozen = !frozen;
+      this.classList.toggle("active", frozen);
+      this.textContent = frozen ? "▶️ Разморозить" : "❄️ Заморозить";
+      if(frozen) {
+        simulation.stop();
+        simulation.nodes().forEach(d => { d.fx=d.x; d.fy=d.y; });
+      } else {
+        simulation.nodes().forEach(d => { d.fx=null; d.fy=null; });
+        simulation.alpha(0.45).restart();
+      }
+    };
+    document.getElementById("btn-reset").onclick = () => {
+      frozen=false;
+      document.getElementById("btn-freeze").classList.remove("active");
+      document.getElementById("btn-freeze").textContent = "❄️ Заморозить";
+      simulation.nodes().forEach(d => {
+        d.fx=null; d.fy=null;
+        d.x = width()/2 + (Math.random()-0.5)*220;
+        d.y = height()/2 + (Math.random()-0.5)*220;
+      });
+      simulation.alpha(1).restart();
+      clearHighlight();
+    };
+
+    // Load custom data
+    document.getElementById("btn-load").onclick = () => {
+      try {
+        const raw = document.getElementById("data-input").value.trim();
+        if(!raw) return alert("Вставьте JSON с данными");
+        const data = JSON.parse(raw);
+        if(!data.nodes || !data.links) return alert("Нужны поля nodes и links");
+        updateGraph(data);
+        simulation.alpha(0.9).restart();
+      } catch(err) {
+        alert("Ошибка JSON: " + err.message);
+      }
+    };
+
+    // Export PNG
+    document.getElementById("btn-export").onclick = () => {
+      const svgEl = document.getElementById("graph");
+      const serializer = new XMLSerializer();
+      let source = serializer.serializeToString(svgEl);
+      source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
+      const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = width();
+        canvas.height = height();
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#070b14";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(img,0,0);
+        const a = document.createElement("a");
+        a.download = "nexus-graph.png";
+        a.href = canvas.toDataURL("image/png");
+        a.click();
+      };
+      img.src = url;
+    };
+
+    d3.timer(() => {
+      document.getElementById("stat-alpha").textContent = simulation.alpha().toFixed(3);
+    });
+
+    function resize() {
+      const w=width(), h=height();
+      svg.attr("viewBox",[0,0,w,h]);
+      simulation.force("center").x(w/2).y(h/2);
+      if(!frozen) simulation.alpha(0.25).restart();
+    }
+    window.addEventListener("resize", resize);
+
+    resize();
+    updateGraph(demoData);
+    simulation.alpha(0.9).restart();
+  </script>
+</body>
+</html>
