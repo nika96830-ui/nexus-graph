@@ -1,0 +1,14 @@
+{
+  "name": "nexus-graph",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Интерактивный визуализатор силовых графов на D3.js",
+  "scripts": {
+    "test": "node --test tests/validator.test.mjs",
+    "check": "node --check app.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {}
+}

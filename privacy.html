@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Политика конфиденциальности — Nexus Graph</title>
+  <meta name="description" content="Политика конфиденциальности Nexus Graph: локальная обработка данных в браузере без отправки на сервер." />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <style>
+    :root { --bg: #070b14; --panel: #0f1628; --border: #1c2940; --text: #e8eef8; --muted: #8b9bb8; --accent: #5b9cff; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; padding: 40px 20px; }
+    main { max-width: 720px; margin: 0 auto; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 32px; }
+    h1 { font-size: 1.5rem; margin-bottom: 8px; color: var(--accent); }
+    .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 24px; }
+    h2 { font-size: 1.05rem; margin: 20px 0 8px; }
+    p { color: var(--text); margin-bottom: 12px; font-size: 0.95rem; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Политика конфиденциальности Nexus Graph</h1>
+    <p class="meta">Дата обновления: 21 ноября 2026 г.</p>
+
+    <h2>1. Локальная обработка данных</h2>
+    <p>Nexus Graph работает полностью на стороне вашего браузера. Все загружаемые вами JSON-данные, узлы, связи и экспортируемые изображения PNG обрабатываются исключительно локально на вашем устройстве и не передаются на серверы разработчика.</p>
+
+    <h2>2. Хранение в браузере</h2>
+    <p>Для удобства работы последний валидный граф сохраняется в локальном хранилище браузера (<code>localStorage</code>). Вы можете удалить эти данные в любой момент, очистив данные сайта в настройках браузера.</p>
+
+    <h2>3. Сторонние ресурсы и хостинг</h2>
+    <p>Библиотека визуализации D3.js загружается с публичного CDN (cdnjs) с проверкой целостности Subresource Integrity (SRI). Хостинг-провайдер (Vercel) может автоматически обрабатывать стандартные технические журналы HTTP-запросов (IP-адрес, User-Agent) в соответствии со своей политикой конфиденциальности.</p>
+
+    <h2>4. Cookies и трекинг</h2>
+    <p>Nexus Graph не использует рекламные cookies, пиксели отслеживания и не продаёт пользовательские данные третьим лицам.</p>
+
+    <h2>5. Контакты</h2>
+    <p>По вопросам конфиденциальности вы можете связаться с разработчиком через репозиторий проекта: <a href="https://github.com/nika96830-ui/nexus-graph">github.com/nika96830-ui/nexus-graph</a>.</p>
+
+    <p style="margin-top: 24px;"><a href="./">← Вернуться в Nexus Graph</a></p>
+  </main>
+</body>
+</html>
